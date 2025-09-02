@@ -10,9 +10,9 @@ class SlopStopper {
     }
 
     processFeedUpdates() {
-        // Check if extension is enabled
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled', 'keywordSlopEnabled', 'keywordList'], (result) => {
+        chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled', 'keywordSlopEnabled', 'keywordList'], (result) => {
+            try {
+                // Check if extension is enabled
                 const isEnabled = result.slopStopperEnabled !== false;
 
                 if (isEnabled) {
@@ -30,8 +30,14 @@ class SlopStopper {
                         });
                     });
                 }
-            });
-        }
+            } catch (error) {
+                if (error.message.includes('Extension context invalidated')) {
+                    // Expected - extension was reloaded
+                } else {
+                    console.log('SlopStopper unexpected error:', error);
+                }
+            }
+        });
 
         setTimeout(() => {
             this.processFeedUpdates();
@@ -86,41 +92,41 @@ class SlopStopper {
         // Get all text content but exclude user info elements
         const excludeSelectors = [
             '.update-components-actor__title',
-            '.update-components-actor__description', 
+            '.update-components-actor__description',
             '.update-components-actor__meta-link',
             '.update-components-actor__sub-description',
             '.update-components-actor__supplementary-actor-info'
         ];
-        
+
         function shouldExcludeElement(element) {
-            return excludeSelectors.some(selector => 
-                element.matches && element.matches(selector) || 
+            return excludeSelectors.some(selector =>
+                element.matches && element.matches(selector) ||
                 element.closest && element.closest(selector)
             );
         }
-        
+
         function extractTextRecursively(node) {
             let text = '';
-            
+
             if (node.nodeType === Node.TEXT_NODE) {
                 return node.textContent || '';
             }
-            
+
             if (node.nodeType === Node.ELEMENT_NODE) {
                 // Skip this element and its children if it matches exclusion criteria
                 if (shouldExcludeElement(node)) {
                     return '';
                 }
-                
+
                 // Recursively process child nodes
                 for (let child of node.childNodes) {
                     text += extractTextRecursively(child);
                 }
             }
-            
+
             return text;
         }
-        
+
         return extractTextRecursively(feedDiv);
     }
 
@@ -144,20 +150,20 @@ class SlopStopper {
 
     isHiringSlop(text, feedDiv) {
         const hasRemote = /remote/i.test(text);
-        
+
         // Rule 1: Check if post has #hiring hashtag but doesn't mention "Remote"
         const hasHiringHashtag = /#hiring/i.test(text);
         if (hasHiringHashtag && !hasRemote) {
             return true;
         }
-        
+
         // Rule 2: Check if post has "View job" button and doesn't mention "Remote"
         const hasViewJobButton = feedDiv.querySelector('button[type="button"] .update-components-button__text') &&
             feedDiv.querySelector('button[type="button"] .update-components-button__text').textContent.includes('View job');
         if (hasViewJobButton && !hasRemote) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -177,7 +183,7 @@ class SlopStopper {
         }
 
         const lowerText = text.toLowerCase();
-        
+
         // Check if any keyword appears in the text
         return keywords.some(keyword => lowerText.includes(keyword));
     }
