@@ -1,6 +1,7 @@
 class SlopStopper {
     constructor() {
-    this.emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
+        //this.emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}]/gu;
+        this.emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F9B0}-\u{1F9B3}\u{2190}-\u{21FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
         this.init();
     }
 
@@ -12,18 +13,19 @@ class SlopStopper {
     processFeedUpdates() {
         // Check if extension is enabled
         if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled'], (result) => {
+            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled'], (result) => {
                 const isEnabled = result.slopStopperEnabled !== false;
                 
                 if (isEnabled) {
                     const emojiCheckingEnabled = result.emojiCheckingEnabled !== false;
                     const braggingSlopEnabled = result.braggingSlopEnabled !== false;
+                    const tagSlopEnabled = result.tagSlopEnabled !== false;
 
                     // Get only the main post containers
                     const feedUpdates = document.querySelectorAll('div[class*="feed-shared-update"][role="article"]:not(.slopstopper-processed)');
                     
                     feedUpdates.forEach(feedDiv => {
-                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled);
+                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled, tagSlopEnabled);
                     });
                 }
             });
@@ -34,7 +36,7 @@ class SlopStopper {
         }, 200);
     }
 
-    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true) {
+    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true, tagSlopEnabled = true) {
         // Mark as processed to avoid reprocessing
         feedDiv.classList.add('slopstopper-processed');
 
@@ -47,6 +49,12 @@ class SlopStopper {
         // Extract text content from the main post content only (exclude author names, headers, etc.)
         const postContentArea = feedDiv.querySelector('.update-components-text');
         const textContent = postContentArea ? postContentArea.textContent || '' : '';
+
+        // Check for tag slop (3+ hashtags)
+        if (tagSlopEnabled && this.hashtagCount(textContent) > 3) {
+            this.hidePostWithOverlay(feedDiv, 'tag');
+            return;
+        }
 
         // If emoji checking is enabled and the text contains two or more emojis then it's slop
         if (emojiCheckingEnabled && this.emojiCount(textContent) >= 2) {
@@ -67,6 +75,12 @@ class SlopStopper {
         return celebrationImages.length > 0;
     }
 
+    hashtagCount(text) {
+        // Match hashtags (#followed by word characters)
+        const hashtagMatches = text.match(/#\w+/g);
+        return hashtagMatches ? hashtagMatches.length : 0;
+    }
+
     hidePostWithOverlay(feedDiv, reason) {
         // Create overlay div
         const overlay = document.createElement('div');
@@ -79,6 +93,8 @@ class SlopStopper {
             messageText.textContent = 'Emoji Slop Hidden';
         } else if (reason == 'bragging') {
             messageText.textContent = 'Bragging Slop Hidden';
+        } else if (reason == 'tag') {
+            messageText.textContent = 'Tag Slop Hidden';
         } else {
             messageText.textContent = 'Unknown Slop Hidden';   
         }
