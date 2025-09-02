@@ -13,19 +13,20 @@ class SlopStopper {
     processFeedUpdates() {
         // Check if extension is enabled
         if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled'], (result) => {
+            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled'], (result) => {
                 const isEnabled = result.slopStopperEnabled !== false;
                 
                 if (isEnabled) {
                     const emojiCheckingEnabled = result.emojiCheckingEnabled !== false;
                     const braggingSlopEnabled = result.braggingSlopEnabled !== false;
                     const tagSlopEnabled = result.tagSlopEnabled !== false;
+                    const hiringSlopEnabled = result.hiringSlopEnabled !== false;
 
                     // Get only the main post containers
                     const feedUpdates = document.querySelectorAll('div[class*="feed-shared-update"][role="article"]:not(.slopstopper-processed)');
                     
                     feedUpdates.forEach(feedDiv => {
-                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled, tagSlopEnabled);
+                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled, tagSlopEnabled, hiringSlopEnabled);
                     });
                 }
             });
@@ -36,19 +37,27 @@ class SlopStopper {
         }, 200);
     }
 
-    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true, tagSlopEnabled = true) {
+    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true, tagSlopEnabled = true, hiringSlopEnabled = true) {
         // Mark as processed to avoid reprocessing
         feedDiv.classList.add('slopstopper-processed');
 
-        // Check for bragging slop first
+        // Check for bragging slop
         if (braggingSlopEnabled && this.hasBraggingSlop(feedDiv)) {
             this.hidePostWithOverlay(feedDiv, 'bragging');
             return;
         }
 
-        // Extract text content from the main post content only (exclude author names, headers, etc.)
+        // Extract text content from the main post content AND possibly job card content
         const postContentArea = feedDiv.querySelector('.update-components-text');
-        const textContent = postContentArea ? postContentArea.textContent || '' : '';
+        const jobCardContent = feedDiv.querySelector('.update-components-entity__description');
+        const textContent = (postContentArea ? postContentArea.textContent || '' : '') + 
+                           (jobCardContent ? ' ' + jobCardContent.textContent || '' : '');
+
+        // Check for hiring slop (#hiring without "Remote")
+        if (hiringSlopEnabled && this.isHiringSlop(textContent)) {
+            this.hidePostWithOverlay(feedDiv, 'hiring');
+            return;
+        }
 
         // Check for tag slop (3+ hashtags)
         if (tagSlopEnabled && this.hashtagCount(textContent) > 3) {
@@ -81,6 +90,13 @@ class SlopStopper {
         return hashtagMatches ? hashtagMatches.length : 0;
     }
 
+    isHiringSlop(text) {
+        // Check if post has #hiring hashtag but doesn't mention "Remote"
+        const hasHiringHashtag = /#hiring/i.test(text);
+        const hasRemote = /remote/i.test(text);
+        return hasHiringHashtag && !hasRemote;
+    }
+
     hidePostWithOverlay(feedDiv, reason) {
         // Create overlay div
         const overlay = document.createElement('div');
@@ -95,6 +111,8 @@ class SlopStopper {
             messageText.textContent = 'Bragging Slop Hidden';
         } else if (reason == 'tag') {
             messageText.textContent = 'Tag Slop Hidden';
+        } else if (reason == 'hiring') {
+            messageText.textContent = 'Hiring Slop Hidden';
         } else {
             messageText.textContent = 'Unknown Slop Hidden';   
         }
