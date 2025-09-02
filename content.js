@@ -51,11 +51,8 @@ class SlopStopper {
             return;
         }
 
-        // Extract text content from the main post content AND possibly job card content
-        const postContentArea = feedDiv.querySelector('.update-components-text');
-        const jobCardContent = feedDiv.querySelector('.update-components-entity__description');
-        const textContent = (postContentArea ? postContentArea.textContent || '' : '') +
-            (jobCardContent ? ' ' + jobCardContent.textContent || '' : '');
+        // Extract all text content from the post, excluding user info
+        const textContent = this.extractPostText(feedDiv);
 
         // Check for hiring slop (#hiring without "Remote")
         if (hiringSlopEnabled && this.isHiringSlop(textContent)) {
@@ -73,6 +70,48 @@ class SlopStopper {
         if (emojiCheckingEnabled && this.emojiCount(textContent) >= 2) {
             this.hidePostWithOverlay(feedDiv, 'emoji');
         }
+    }
+
+    extractPostText(feedDiv) {
+        // Get all text content but exclude user info elements
+        const excludeSelectors = [
+            '.update-components-actor__title',
+            '.update-components-actor__description', 
+            '.update-components-actor__meta-link',
+            '.update-components-actor__sub-description',
+            '.update-components-actor__supplementary-actor-info'
+        ];
+        
+        function shouldExcludeElement(element) {
+            return excludeSelectors.some(selector => 
+                element.matches && element.matches(selector) || 
+                element.closest && element.closest(selector)
+            );
+        }
+        
+        function extractTextRecursively(node) {
+            let text = '';
+            
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent || '';
+            }
+            
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                // Skip this element and its children if it matches exclusion criteria
+                if (shouldExcludeElement(node)) {
+                    return '';
+                }
+                
+                // Recursively process child nodes
+                for (let child of node.childNodes) {
+                    text += extractTextRecursively(child);
+                }
+            }
+            
+            return text;
+        }
+        
+        return extractTextRecursively(feedDiv);
     }
 
     emojiCount(text) {
