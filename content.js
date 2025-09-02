@@ -6,7 +6,6 @@ class SlopStopper {
     }
 
     init() {
-        console.log('SlopStopper initialized');
         this.processFeedUpdates();
     }
 
@@ -15,18 +14,18 @@ class SlopStopper {
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled'], (result) => {
                 const isEnabled = result.slopStopperEnabled !== false;
-                
-                if (isEnabled) {
-                    const emojiCheckingEnabled = result.emojiCheckingEnabled !== false;
-                    const braggingSlopEnabled = result.braggingSlopEnabled !== false;
-                    const tagSlopEnabled = result.tagSlopEnabled !== false;
-                    const hiringSlopEnabled = result.hiringSlopEnabled !== false;
 
-                    // Get only the main post containers
+                if (isEnabled) {
+                    // Get the main post containers
                     const feedUpdates = document.querySelectorAll('div[class*="feed-shared-update"][role="article"]:not(.slopstopper-processed)');
-                    
+
                     feedUpdates.forEach(feedDiv => {
-                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled, tagSlopEnabled, hiringSlopEnabled);
+                        this.processFeedUpdate(feedDiv, {
+                            emojiCheckingEnabled: result.emojiCheckingEnabled !== false,
+                            braggingSlopEnabled: result.braggingSlopEnabled !== false,
+                            tagSlopEnabled: result.tagSlopEnabled !== false,
+                            hiringSlopEnabled: result.hiringSlopEnabled !== false
+                        });
                     });
                 }
             });
@@ -37,7 +36,12 @@ class SlopStopper {
         }, 200);
     }
 
-    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true, tagSlopEnabled = true, hiringSlopEnabled = true) {
+    processFeedUpdate(feedDiv, {
+        emojiCheckingEnabled = true,
+        braggingSlopEnabled = true,
+        tagSlopEnabled = true,
+        hiringSlopEnabled = true
+    } = {}) {
         // Mark as processed to avoid reprocessing
         feedDiv.classList.add('slopstopper-processed');
 
@@ -50,8 +54,8 @@ class SlopStopper {
         // Extract text content from the main post content AND possibly job card content
         const postContentArea = feedDiv.querySelector('.update-components-text');
         const jobCardContent = feedDiv.querySelector('.update-components-entity__description');
-        const textContent = (postContentArea ? postContentArea.textContent || '' : '') + 
-                           (jobCardContent ? ' ' + jobCardContent.textContent || '' : '');
+        const textContent = (postContentArea ? postContentArea.textContent || '' : '') +
+            (jobCardContent ? ' ' + jobCardContent.textContent || '' : '');
 
         // Check for hiring slop (#hiring without "Remote")
         if (hiringSlopEnabled && this.isHiringSlop(textContent)) {
@@ -65,12 +69,11 @@ class SlopStopper {
             return;
         }
 
-        // If emoji checking is enabled and the text contains two or more emojis then it's slop
+        // Check for emoji slop (2+ emojis)
         if (emojiCheckingEnabled && this.emojiCount(textContent) >= 2) {
             this.hidePostWithOverlay(feedDiv, 'emoji');
         }
     }
-
 
     emojiCount(text) {
         // Match all emojis in the text
@@ -101,7 +104,7 @@ class SlopStopper {
         // Create overlay div
         const overlay = document.createElement('div');
         overlay.className = 'slopstopper-overlay';
-        
+
         // Create message text
         const messageText = document.createElement('div');
         messageText.className = 'slopstopper-message';
@@ -114,7 +117,7 @@ class SlopStopper {
         } else if (reason == 'hiring') {
             messageText.textContent = 'Hiring Slop Hidden';
         } else {
-            messageText.textContent = 'Unknown Slop Hidden';   
+            messageText.textContent = 'Unknown Slop Hidden';
         }
 
         // Create unhide button
@@ -165,4 +168,4 @@ class SlopStopper {
     }
 }
 
-    new SlopStopper();
+new SlopStopper();
