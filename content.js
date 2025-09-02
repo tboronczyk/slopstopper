@@ -12,7 +12,7 @@ class SlopStopper {
     processFeedUpdates() {
         // Check if extension is enabled
         if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled'], (result) => {
+            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled', 'tagSlopEnabled', 'hiringSlopEnabled', 'keywordSlopEnabled', 'keywordList'], (result) => {
                 const isEnabled = result.slopStopperEnabled !== false;
 
                 if (isEnabled) {
@@ -24,7 +24,9 @@ class SlopStopper {
                             emojiCheckingEnabled: result.emojiCheckingEnabled !== false,
                             braggingSlopEnabled: result.braggingSlopEnabled !== false,
                             tagSlopEnabled: result.tagSlopEnabled !== false,
-                            hiringSlopEnabled: result.hiringSlopEnabled !== false
+                            hiringSlopEnabled: result.hiringSlopEnabled !== false,
+                            keywordSlopEnabled: result.keywordSlopEnabled !== false,
+                            keywordList: result.keywordList || ''
                         });
                     });
                 }
@@ -40,7 +42,9 @@ class SlopStopper {
         emojiCheckingEnabled = true,
         braggingSlopEnabled = true,
         tagSlopEnabled = true,
-        hiringSlopEnabled = true
+        hiringSlopEnabled = true,
+        keywordSlopEnabled = true,
+        keywordList = ''
     } = {}) {
         // Mark as processed to avoid reprocessing
         feedDiv.classList.add('slopstopper-processed');
@@ -53,6 +57,12 @@ class SlopStopper {
 
         // Extract all text content from the post, excluding user info
         const textContent = this.extractPostText(feedDiv);
+
+        // Check for keyword slop
+        if (keywordSlopEnabled && this.hasKeywordSlop(textContent, keywordList)) {
+            this.hidePostWithOverlay(feedDiv, 'keyword');
+            return;
+        }
 
         // Check for hiring slop (#hiring without "Remote")
         if (hiringSlopEnabled && this.isHiringSlop(textContent)) {
@@ -139,6 +149,27 @@ class SlopStopper {
         return hasHiringHashtag && !hasRemote;
     }
 
+    hasKeywordSlop(text, keywordList) {
+        if (!keywordList || keywordList.trim() === '') {
+            return false;
+        }
+
+        // Parse comma-separated keywords and clean them up
+        const keywords = keywordList
+            .split(',')
+            .map(keyword => keyword.trim().toLowerCase())
+            .filter(keyword => keyword.length > 0);
+
+        if (keywords.length === 0) {
+            return false;
+        }
+
+        const lowerText = text.toLowerCase();
+        
+        // Check if any keyword appears in the text
+        return keywords.some(keyword => lowerText.includes(keyword));
+    }
+
     hidePostWithOverlay(feedDiv, reason) {
         // Create overlay div
         const overlay = document.createElement('div');
@@ -147,7 +178,9 @@ class SlopStopper {
         // Create message text
         const messageText = document.createElement('div');
         messageText.className = 'slopstopper-message';
-        if (reason == 'emoji') {
+        if (reason == 'keyword') {
+            messageText.textContent = 'Keyword Slop Hidden';
+        } else if (reason == 'emoji') {
             messageText.textContent = 'Emoji Slop Hidden';
         } else if (reason == 'bragging') {
             messageText.textContent = 'Bragging Slop Hidden';

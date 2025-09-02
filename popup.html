@@ -24,9 +24,6 @@
             margin-bottom: 12px;
             padding: 4px 0;
         }
-        .toggle-container:last-child {
-            margin-bottom: 0;
-        }
         label { 
             margin-left: 8px; 
             font-size: 14px;
@@ -40,6 +37,24 @@
         input[type="checkbox"]:disabled + label {
             color: #999;
             cursor: default;
+        }
+        .keyword-container {
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+        .keyword-input {
+            width: 100%;
+            margin-top: 6px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .keyword-input:disabled {
+            background: #f5f5f5;
+            color: #999;
         }
         .note {
             margin-top: 16px;
@@ -72,6 +87,13 @@
     <div class="toggle-container">
         <input type="checkbox" id="hiringToggle">
         <label for="hiringToggle" title="Hide posts with #hiring but no mention of 'Remote'">Hide hiring slop</label>
+    </div>
+    <div class="toggle-container" style="margin-bottom:0">
+        <input type="checkbox" id="keywordToggle">
+        <label for="keywordToggle" title="Hide posts containing specified keywords">Hide keyword slop</label>
+    </div>
+    <div class="keyword-container">
+        <input type="text" id="keywordInput" class="keyword-input" placeholder="Enter keywords separated by commas" title="Enter keywords to hide, separated by commas">
     </div>
     <div class="note">
         Note: Reload LinkedIn page after changing settings
