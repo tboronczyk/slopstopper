@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SlopStopper - LinkedIn Post Filter",
   "version": "1.0",
-  "description": "Hide emoji-heavy posts on LinkedIn",
+  "description": "Hide slop posts on LinkedIn",
   "permissions": [
     "activeTab",
     "storage"
