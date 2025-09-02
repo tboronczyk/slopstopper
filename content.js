@@ -10,29 +10,47 @@ class SlopStopper {
     }
 
     processFeedUpdates() {
-        // Get only the main post containers
-        const feedUpdates = document.querySelectorAll('div[class*="feed-shared-update"][role="article"]:not(.slopstopper-processed)');
-        
-        feedUpdates.forEach(feedDiv => {
-            this.processFeedUpdate(feedDiv);
-        });
+        // Check if extension is enabled
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.sync.get(['slopStopperEnabled', 'emojiCheckingEnabled', 'braggingSlopEnabled'], (result) => {
+                const isEnabled = result.slopStopperEnabled !== false;
+                
+                if (isEnabled) {
+                    const emojiCheckingEnabled = result.emojiCheckingEnabled !== false;
+                    const braggingSlopEnabled = result.braggingSlopEnabled !== false;
+
+                    // Get only the main post containers
+                    const feedUpdates = document.querySelectorAll('div[class*="feed-shared-update"][role="article"]:not(.slopstopper-processed)');
+                    
+                    feedUpdates.forEach(feedDiv => {
+                        this.processFeedUpdate(feedDiv, emojiCheckingEnabled, braggingSlopEnabled);
+                    });
+                }
+            });
+        }
 
         setTimeout(() => {
             this.processFeedUpdates();
         }, 200);
     }
 
-    processFeedUpdate(feedDiv) {
+    processFeedUpdate(feedDiv, emojiCheckingEnabled = true, braggingSlopEnabled = true) {
         // Mark as processed to avoid reprocessing
         feedDiv.classList.add('slopstopper-processed');
+
+        // Check for bragging slop first
+        if (braggingSlopEnabled && this.hasBraggingSlop(feedDiv)) {
+            this.hidePostWithOverlay(feedDiv, 'bragging');
+            return;
+        }
 
         // Extract text content from the main post content only (exclude author names, headers, etc.)
         const postContentArea = feedDiv.querySelector('.update-components-text');
         const textContent = postContentArea ? postContentArea.textContent || '' : '';
 
-        // If the text contains two or more emojis then it's slop
-        if (this.emojiCount(textContent) >= 2) {
-            this.hidePostWithOverlay(feedDiv);
+        // If emoji checking is enabled and the text contains two or more emojis then it's slop
+        if (emojiCheckingEnabled && this.emojiCount(textContent) >= 2) {
+            this.hidePostWithOverlay(feedDiv, 'emoji');
         }
     }
 
@@ -43,7 +61,13 @@ class SlopStopper {
         return matches ? matches.length : 0;
     }
 
-    hidePostWithOverlay(feedDiv) {
+    hasBraggingSlop(feedDiv) {
+        // Check for celebration/bragging images
+        const celebrationImages = feedDiv.querySelectorAll('div[class^="feed-shared-celebration-image"]');
+        return celebrationImages.length > 0;
+    }
+
+    hidePostWithOverlay(feedDiv, reason) {
         // Create overlay div
         const overlay = document.createElement('div');
         overlay.className = 'slopstopper-overlay';
@@ -51,8 +75,14 @@ class SlopStopper {
         // Create message text
         const messageText = document.createElement('div');
         messageText.className = 'slopstopper-message';
-        messageText.textContent = 'Slop Hidden';
-        
+        if (reason == 'emoji') {
+            messageText.textContent = 'Emoji Slop Hidden';
+        } else if (reason == 'bragging') {
+            messageText.textContent = 'Bragging Slop Hidden';
+        } else {
+            messageText.textContent = 'Unknown Slop Hidden';   
+        }
+
         // Create unhide button
         const unhideButton = document.createElement('button');
         unhideButton.className = 'slopstopper-unhide-btn';
