@@ -1,0 +1,60 @@
+.slopstopper-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(240, 240, 240, 0.95);
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.slopstopper-message {
+    font-size: 18px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.slopstopper-unhide-btn {
+    background-color: #0073b1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.slopstopper-unhide-btn:hover {
+    background-color: #005885;
+}
+
+.slopstopper-unhide-btn:active {
+    transform: translateY(1px);
+}
+
+/* Ensure the feed update container has relative positioning for overlay */
+div[class^="feed-shared-update"].slopstopper-hidden {
+    position: relative;
+    min-height: 200px;
+}
+
+/* Hide scrollbars on overlay to prevent layout issues */
+.slopstopper-overlay {
+    overflow: hidden;
+}
+
+/* Style for when content is being hidden */
+.slopstopper-hidden-content {
+    display: none !important;
+}
