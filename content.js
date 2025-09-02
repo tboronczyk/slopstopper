@@ -65,7 +65,7 @@ class SlopStopper {
         }
 
         // Check for hiring slop (#hiring without "Remote")
-        if (hiringSlopEnabled && this.isHiringSlop(textContent)) {
+        if (hiringSlopEnabled && this.isHiringSlop(textContent, feedDiv)) {
             this.hidePostWithOverlay(feedDiv, 'hiring');
             return;
         }
@@ -142,11 +142,23 @@ class SlopStopper {
         return hashtagMatches ? hashtagMatches.length : 0;
     }
 
-    isHiringSlop(text) {
-        // Check if post has #hiring hashtag but doesn't mention "Remote"
-        const hasHiringHashtag = /#hiring/i.test(text);
+    isHiringSlop(text, feedDiv) {
         const hasRemote = /remote/i.test(text);
-        return hasHiringHashtag && !hasRemote;
+        
+        // Rule 1: Check if post has #hiring hashtag but doesn't mention "Remote"
+        const hasHiringHashtag = /#hiring/i.test(text);
+        if (hasHiringHashtag && !hasRemote) {
+            return true;
+        }
+        
+        // Rule 2: Check if post has "View job" button and doesn't mention "Remote"
+        const hasViewJobButton = feedDiv.querySelector('button[type="button"] .update-components-button__text') &&
+            feedDiv.querySelector('button[type="button"] .update-components-button__text').textContent.includes('View job');
+        if (hasViewJobButton && !hasRemote) {
+            return true;
+        }
+        
+        return false;
     }
 
     hasKeywordSlop(text, keywordList) {
